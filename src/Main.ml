@@ -57,7 +57,7 @@ let () =
       begin try
         let rules = Parser.parse_file filename in
         let trained_aut = List.fold_left Automaton.add_rule Automaton.empty_automaton rules in
-        let unique_symbols = Parser.get_unique_symbols rules [] in
+        let unique_symbols = Parser.get_unique_symbols rules in
         let mapping = Parser.generate_mapping unique_symbols in
         
         print_endline "Key mappings:";

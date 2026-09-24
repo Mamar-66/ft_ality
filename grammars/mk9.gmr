@@ -1,6 +1,15 @@
-[BP] = Claw Slam (Freddy Krueger)
-[BP] = Knockdown (Sonya)
-[BP] = Fist of Death (Liu-Kang)
-[BP], [FP] = Saibot Blast (Noob Saibot)
-[BP], [FP] = Active Duty (Jax)
-down, right, [FP] = Hadouken (Ryu)
+[FP] = Light Jab
+[FP] = Straight Punch
+[BP] = Heavy Hook
+
+down = Crouch
+down, right = Crawl Forward
+down, right, [FP] = Hadouken
+down, right, [FP], [BP] = EX Hadouken
+
+down, left = Duck Back
+down, left, [FK] = Tatsumaki Senpukyaku
+
+right, down, right, [FP] = Shoryuken
+
+down, right, down, right, [FP] = Super Hadouken

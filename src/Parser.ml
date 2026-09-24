@@ -3,27 +3,42 @@ let rec find_opt key = function
   | (k, v) :: _ when k = key -> Some v
   | _ :: t -> find_opt key t
 
-let rec read_lines ic acc =
-  let read_next_line () =
-    try Some (input_line ic) with End_of_file -> None
+let read_lines ic =
+  let rec aux acc =
+    match try Some (input_line ic) with End_of_file -> None with
+    | Some line -> aux (line :: acc)
+    | None -> List.rev acc
   in
-  match read_next_line () with
-  | Some line -> read_lines ic (line :: acc)
-  | None ->
-      close_in ic;
-      List.rev acc
+  try
+    let lines = aux [] in
+    close_in ic;
+    lines
+  with exn ->
+    close_in_noerr ic;
+    raise exn
 
 let parse_line line =
-  match String.split_on_char '=' line with
-  | [seq_str; move_str] ->
-      let keys_raw = String.split_on_char ',' seq_str in
-      let keys = List.map String.trim keys_raw in
-      Some (keys, String.trim move_str)
-  | _ -> None
+  let line = String.trim line in
+  if line = "" || String.get line 0 = '#' then None
+  else
+    match String.split_on_char '=' line with
+    | [seq_str; move_str] ->
+        let keys_raw = String.split_on_char ',' seq_str in
+        let keys = 
+          keys_raw 
+          |> List.map String.trim 
+          |> List.filter (fun s -> String.length s > 0) 
+        in
+        let move = String.trim move_str in
+        
+        if keys = [] || String.length move = 0 then None
+        else Some (keys, move)
+        
+    | _ -> None
 
 let parse_file filename =
   let ic = open_in filename in
-  let lines = read_lines ic [] in
+  let lines = read_lines ic in
   let rec filter_map ls acc =
     match ls with
     | [] -> List.rev acc
@@ -32,26 +47,35 @@ let parse_file filename =
         | Some rule -> filter_map t (rule :: acc)
         | None -> filter_map t acc
   in
-  filter_map lines []
+  let rules = filter_map lines [] in
+  if rules = [] then
+    failwith "Grammar file is empty or contains no valid rules."
+  else
+    rules
 
-(* --- Génération automatique du key mapping --- *)
-let rec get_unique_symbols rules acc =
-  match rules with
-  | [] -> List.rev acc
-  | (syms, _) :: t ->
-      let rec add_syms ss a =
-        match ss with
-        | [] -> a
-        | s :: st -> if List.mem s a then add_syms st a else add_syms st (s :: a)
-      in
-      get_unique_symbols t (add_syms syms acc)
+let get_unique_symbols rules =
+  let rec aux rs acc =
+    match rs with
+    | [] -> List.rev acc
+    | (syms, _) :: t ->
+        let rec add_syms ss a =
+          match ss with
+          | [] -> a
+          | s :: st -> if List.mem s a then add_syms st a else add_syms st (s :: a)
+        in
+        aux t (add_syms syms acc)
+  in
+  aux rules []
 
 let generate_mapping symbols =
-  let available_keys = ["q"; "w"; "e"; "a"; "s"; "d"; "z"; "x"; "c"; "v"; "f"; "r"] in
-  let rec assign syms keys acc =
-    match syms, keys with
-    | [], _ -> List.rev acc
-    | s :: st, k :: kt -> assign st kt ((k, s) :: acc)
-    | s :: st, [] -> assign st [] (("?", s) :: acc) (* Si trop de symboles *)
+  let make_key i =
+    if i < 26 then 
+      String.make 1 (Char.chr (Char.code 'a' + i))
+    else if i < 52 then 
+      String.make 1 (Char.chr (Char.code 'A' + (i - 26)))
+    else if i < 62 then 
+      String.make 1 (Char.chr (Char.code '0' + (i - 52)))
+    else 
+      "k" ^ string_of_int i
   in
-  assign symbols available_keys []
+  List.mapi (fun i sym -> (make_key i, sym)) symbols
