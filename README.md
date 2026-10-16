@@ -1,48 +1,58 @@
 # ft_ality
 
-Entraîneur de combos façon *training mode* de jeu de combat : un automate fini
-est construit à partir d'une grammaire, puis reconnaît les coups en temps réel
-au clavier (pas besoin d'appuyer sur Entrée).
+Bienvenue dans **ft_ality**, un outil conçu pour vous mettre dans l'ambiance d'un _training mode_ de jeu de combat !
+
+Le principe ? L'application lit une grammaire de coups, construit un automate fini, et reconnaît vos enchaînements en temps réel directement au clavier — **pas besoin d'appuyer sur Entrée**.
+
+## Lancer le projet
 
 ```
 make
-./ft_ality grammars/mk9.gmr          # mode normal
-./ft_ality -d grammars/mk9.gmr       # mode debug (transitions de l'automate)
+./ft_ality grammars/mk9.gmr          # Mode normal
+./ft_ality -d grammars/mk9.gmr       # Mode debug (affiche les transitions de l'automate)
+
 ```
-Quitter : `Ctrl-D` ou `Ctrl-C`.
+
+Pour quitter à tout moment : `Ctrl-D` ou `Ctrl-C`.
 
 ## Format des grammaires
 
+Définissez vos coups de manière intuitive dans un fichier texte :
+
 ```
-# commentaire
+# Un commentaire commence par un dièse
 touche1, touche2, ..., toucheN = Nom du coup
+
 ```
-Les symboles `up` / `down` / `left` / `right` (casse indifférente) sont mappés
-sur les flèches ; les autres reçoivent `q w e a s d z x ...` dans l'ordre
-alphabétique des symboles. Le mapping est donc entièrement calculé depuis la
-grammaire.
 
-## Architecture
+- **Touches spéciales :** `up`, `down`, `left` et `right` (la casse n'importe pas) sont automatiquement reliées aux flèches directionnelles.
 
-| Module      | Rôle |
-|-------------|------|
-| `Types`     | types partagés (`rule`, `key`) |
-| `Parser`    | lecture ligne par ligne, erreurs typées (`result`) avec numéro de ligne |
-| `Automaton` | A = ⟨Q, Σ, Q0, F, δ⟩ : trie des préfixes + δ totale (plus long suffixe, Aho-Corasick) |
-| `Keymap`    | calcul du mapping touches → symboles |
-| `Terminal`  | lecture touche par touche (`stty` via `Sys.command`), décodage des flèches |
-| `Main`      | arguments, boucle principale récursive terminale |
+- **Touches classiques :** Les autres symboles reçoivent les touches `q`, `w`, `e`, `a`, `s`, `d`, `z`, `x`... dans l'ordre alphabétique. Le mapping est calculé entièrement de manière dynamique.
 
-Aucun `open`, aucun `;;`, aucune `ref` / tableau / champ mutable ; modules
-utilisés : `Stdlib` (Pervasives), `List`, `String`, `Sys`.
+## Architecture technique
 
-## Grammaires de test (pour la correction)
+Le code est découpé en plusieurs modules aux rôles bien définis :
 
-| Fichier | Test de la feuille |
-|---------|--------------------|
-| `grammars/mk9.gmr` | comportement de base (même mapping que le sujet) |
-| `grammars/small.gmr` | petite grammaire (4 coups) |
-| `grammars/homonymous.gmr` | règles homonymes (même combinaison) |
-| `grammars/prefix.gmr` | préfixes communs (`a` / `a,b` / `a,b,a`) |
-| `grammars/street_fighter.gmr` | combos longs qui se chevauchent |
-| `grammars/invalid/*.gmr` | gestion d'erreurs (vide, sans `=`, clé vide, nom vide) |
+| Module      | Rôle                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `Types`     | Partage les types fondamentaux (`rule`, `key`)                                                                                       |
+| `Parser`    | Analyse ligne par ligne et gère les erreurs typées (`result`) avec le numéro de ligne                                                |
+| `Automaton` | Automate $A = \langle Q, \Sigma, Q_0, F, \delta \rangle$ : tri des préfixes + $\delta$ totale (plus long suffixe, type Aho-Corasick) |
+| `Keymap`    | Calcule proprement le mapping entre touches et symboles                                                                              |
+| `Terminal`  | Gère la lecture touche par touche via `stty` (`Sys.command`) et décode les flèches                                                   |
+| `Main`      | Orchestre les arguments et gère la boucle principale en récursion terminale                                                          |
+
+> **Note d'implémentation :** Par choix de conception rigoureux, le projet respecte des contraintes strictes : aucun `open`, aucun `;;`, aucune `ref`, aucun tableau ni champ mutable. Les modules autorisés se limitent à `Stdlib`, `List`, `String` et `Sys`.
+
+## Grammaires de test
+
+Plusieurs fichiers sont fournis pour tester les différents cas de figure :
+
+| Fichier                       | Description                                                     |
+| ----------------------------- | --------------------------------------------------------------- |
+| `grammars/mk9.gmr`            | Comportement de base (même mapping que le sujet)                |
+| `grammars/small.gmr`          | Petite grammaire simple (4 coups)                               |
+| `grammars/homonymous.gmr`     | Règles homonymes (même combinaison de touches)                  |
+| `grammars/prefix.gmr`         | Préfixes communs (`a` / `a,b` / `a,b,a`)                        |
+| `grammars/street_fighter.gmr` | Combos longs qui se chevauchent                                 |
+| `grammars/invalid/*.gmr`      | Gestion des erreurs (fichiers vides, sans `=`, clé ou nom vide) |
