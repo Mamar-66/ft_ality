@@ -1,79 +1,73 @@
-let empty_node id : Types.node = {
-  Types.id = id;
-  moves = [];
-  transitions = [];
+type state = {
+  id : int;
+  word : Types.symbol list;
+  moves : Types.move_name list;
+  next : (Types.symbol * state) list;
 }
 
-let empty_automaton : Types.automaton = {
-  Types.nextId = 1;
-  nodes = [(0, empty_node 0)];
-  currentState = 0;
+type t = {
+  root : state;
+  states : int;
+  rules : int;
+  alphabet : Types.symbol list;
 }
 
-let get_node aut id : Types.node =
-  match Parser.find_opt id aut.Types.nodes with
-  | Some n -> n
-  | None -> empty_node id
+let new_state id word = { id = id; word = word; moves = []; next = [] }
 
-let update_node aut node =
-  let filtered = List.filter (fun (k, _) -> k <> node.Types.id) aut.Types.nodes in
-  { aut with Types.nodes = (node.Types.id, node) :: filtered }
+let empty = { root = new_state 0 []; states = 1; rules = 0; alphabet = [] }
 
-let rec add_rule_rec aut current_id symbols move =
-  let current_node = get_node aut current_id in
-  match symbols with
-  | [] ->
-      let new_node = { current_node with Types.moves = current_node.Types.moves @ [move] } in
-      update_node aut new_node
-  | sym :: rest ->
-      match Parser.find_opt sym current_node.Types.transitions with
-      | Some next_id ->
-          add_rule_rec aut next_id rest move
-      | None ->
-          let new_id = aut.Types.nextId in
-          let aut_with_new = { 
-            aut with 
-            Types.nextId = new_id + 1; 
-            Types.nodes = (new_id, empty_node new_id) :: aut.Types.nodes 
-          } in
-          let updated_current = { 
-            current_node with 
-            Types.transitions = (sym, new_id) :: current_node.Types.transitions 
-          } in
-          let aut_updated = update_node aut_with_new updated_current in
-          add_rule_rec aut_updated new_id rest move
+let rec insert node keys name next_id =
+  match keys with
+  | [] when List.mem name node.moves -> (node, next_id)
+  | [] -> ({ node with moves = node.moves @ [ name ] }, next_id)
+  | key :: rest ->
+      let (child, next_id) =
+        match List.assoc_opt key node.next with
+        | Some child -> (child, next_id)
+        | None -> (new_state next_id (node.word @ [ key ]), next_id + 1)
+      in
+      let (child, next_id) = insert child rest name next_id in
+      ({ node with next = (key, child) :: List.remove_assoc key node.next },
+       next_id)
 
-let add_rule aut (symbols, move) =
-  add_rule_rec aut 0 symbols move
+let add_rule automaton rule =
+  let add_symbol alphabet key =
+    if List.mem key alphabet then alphabet else key :: alphabet
+  in
+  let (root, states) =
+    insert automaton.root rule.Types.keys rule.Types.name automaton.states
+  in
+  { root = root;
+    states = states;
+    rules = automaton.rules + 1;
+    alphabet = List.fold_left add_symbol automaton.alphabet rule.Types.keys }
 
-let rec print_debug_end_states moves id =
-  match moves with
-  | [] -> ()
-  | m :: t ->
-      print_endline ("Found end state for \"" ^ m ^ "\" at: " ^ string_of_int id);
-      print_debug_end_states t id
+let rule_count automaton = automaton.rules
+let state_count automaton = automaton.states
+let alphabet automaton = List.sort compare automaton.alphabet
+let initial automaton = automaton.root
 
-let step aut sym debug =
-  let current_id = aut.Types.currentState in
-  let current_node = get_node aut current_id in
-  match Parser.find_opt sym current_node.Types.transitions with
-  | Some next_id ->
-      if debug then begin
-        print_endline ("State " ^ string_of_int current_id ^ ", \"" ^ sym ^ "\" -> State " ^ string_of_int next_id);
-        let next_node = get_node aut next_id in
-        print_debug_end_states next_node.Types.moves next_id
-      end;
-      { aut with Types.currentState = next_id }
-  | None ->
-      let root_node = get_node aut 0 in
-      match Parser.find_opt sym root_node.Types.transitions with
-      | Some next_id ->
-          if debug then begin
-            print_endline ("State 0, \"" ^ sym ^ "\" -> State " ^ string_of_int next_id);
-            let next_node = get_node aut next_id in
-            print_debug_end_states next_node.Types.moves next_id
-          end;
-          { aut with Types.currentState = next_id }
-      | None ->
-          if debug then print_endline ("No transition for \"" ^ sym ^ "\" (reset to state 0)");
-          { aut with Types.currentState = 0 }
+let step automaton state symbol =
+  let rec walk node = function
+    | [] -> Some node
+    | key :: rest ->
+        match List.assoc_opt key node.next with
+        | Some child -> walk child rest
+        | None -> None
+  in
+  let rec longest_suffix = function
+    | [] -> automaton.root
+    | (_ :: shorter) as suffix ->
+        match walk automaton.root suffix with
+        | Some node -> node
+        | None -> longest_suffix shorter
+  in
+  match List.assoc_opt symbol state.next with
+  | Some child -> child
+  | None -> longest_suffix (state.word @ [ symbol ])
+
+let id state = state.id
+let word state = state.word
+let moves state = state.moves
+let is_initial state = state.word = []
+let is_final state = state.moves <> []

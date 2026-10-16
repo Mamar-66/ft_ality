@@ -1,0 +1,5 @@
+# Several moves executed with the SAME key combination: all of them must show
+punch, kick = Move One
+punch, kick = Move Two
+punch, kick = Move Three
+kick = Lonely Kick

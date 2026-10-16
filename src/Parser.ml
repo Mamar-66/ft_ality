@@ -1,81 +1,72 @@
-let rec find_opt key = function
-  | [] -> None
-  | (k, v) :: _ when k = key -> Some v
-  | _ :: t -> find_opt key t
-
-let read_lines ic =
-  let rec aux acc =
-    match try Some (input_line ic) with End_of_file -> None with
-    | Some line -> aux (line :: acc)
-    | None -> List.rev acc
+let is_printable str =
+  let rec check i =
+    i >= String.length str
+    || (let code = int_of_char str.[i] in
+        (code >= 32 && code <> 127 || str.[i] = '\t') && check (i + 1))
   in
-  try
-    let lines = aux [] in
-    close_in ic;
-    lines
-  with exn ->
-    close_in_noerr ic;
-    raise exn
+  check 0
 
-let parse_line line =
-  let line = String.trim line in
-  if line = "" || String.get line 0 = '#' then None
+let parse_keys str =
+  let keys = List.map String.trim (String.split_on_char ',' str) in
+  if List.exists (fun key -> key = "") keys then Error "empty key in sequence"
+  else Ok keys
+
+let parse_rule line eq =
+  let name =
+    String.trim (String.sub line (eq + 1) (String.length line - eq - 1))
+  in
+  if name = "" then Error "empty move name"
   else
-    match String.split_on_char '=' line with
-    | [seq_str; move_str] ->
-        let keys_raw = String.split_on_char ',' seq_str in
-        let keys = 
-          keys_raw 
-          |> List.map String.trim 
-          |> List.filter (fun s -> String.length s > 0) 
-        in
-        let move = String.trim move_str in
-        
-        if keys = [] || String.length move = 0 then None
-        else Some (keys, move)
-        
-    | _ -> None
+    match parse_keys (String.sub line 0 eq) with
+    | Error msg -> Error msg
+    | Ok keys -> Ok (Some { Types.keys = keys; name = name })
 
-let parse_file filename =
-  let ic = open_in filename in
-  let lines = read_lines ic in
-  let rec filter_map ls acc =
-    match ls with
-    | [] -> List.rev acc
-    | h :: t ->
-        match parse_line h with
-        | Some rule -> filter_map t (rule :: acc)
-        | None -> filter_map t acc
-  in
-  let rules = filter_map lines [] in
-  if rules = [] then
-    failwith "Grammar file is empty or contains no valid rules."
+let parse_line raw =
+  let line = String.trim raw in
+  if line = "" || line.[0] = '#' then Ok None
+  else if not (is_printable line) then Error "invalid (non printable) character"
   else
-    rules
+    match String.index_opt line '=' with
+    | None -> Error "missing '=' (expected: key1, key2, ... = Move name)"
+    | Some eq -> parse_rule line eq
 
-let get_unique_symbols rules =
-  let rec aux rs acc =
-    match rs with
-    | [] -> List.rev acc
-    | (syms, _) :: t ->
-        let rec add_syms ss a =
-          match ss with
-          | [] -> a
-          | s :: st -> if List.mem s a then add_syms st a else add_syms st (s :: a)
-        in
-        aux t (add_syms syms acc)
-  in
-  aux rules []
+type line =
+  | Line of string
+  | End
+  | Too_long
 
-let generate_mapping symbols =
-  let make_key i =
-    if i < 26 then 
-      String.make 1 (Char.chr (Char.code 'a' + i))
-    else if i < 52 then 
-      String.make 1 (Char.chr (Char.code 'A' + (i - 26)))
-    else if i < 62 then 
-      String.make 1 (Char.chr (Char.code '0' + (i - 52)))
-    else 
-      "k" ^ string_of_int i
+let max_line_length = 4096
+
+let read_line ic =
+  let finish chars = Line (String.concat "" (List.rev_map (String.make 1) chars)) in
+  let rec loop chars length =
+    match input_char ic with
+    | exception End_of_file -> if chars = [] then End else finish chars
+    | '\n' -> finish chars
+    | _ when length >= max_line_length -> Too_long
+    | c -> loop (c :: chars) (length + 1)
   in
-  List.mapi (fun i sym -> (make_key i, sym)) symbols
+  loop [] 0
+
+let fold_file f init filename =
+  let error line_no msg =
+    Error (filename ^ ": line " ^ string_of_int line_no ^ ": " ^ msg)
+  in
+  let rec loop ic line_no acc =
+    match read_line ic with
+    | End -> Ok acc
+    | Too_long -> error line_no "line too long"
+    | Line line ->
+        match parse_line line with
+        | Error msg -> error line_no msg
+        | Ok None -> loop ic (line_no + 1) acc
+        | Ok (Some rule) -> loop ic (line_no + 1) (f acc rule)
+  in
+  match open_in filename with
+  | exception Sys_error msg -> Error msg
+  | ic ->
+      let result =
+        try loop ic 1 init with Sys_error msg -> Error (filename ^ ": " ^ msg)
+      in
+      close_in_noerr ic;
+      result

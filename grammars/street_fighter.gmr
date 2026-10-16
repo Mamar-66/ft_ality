@@ -1,0 +1,18 @@
+# Street Fighter style moves
+# Format: key1, key2, ... = Move name
+
+[FP] = Light Jab
+[FP] = Straight Punch
+[BP] = Heavy Hook
+
+down = Crouch
+down, right = Crawl Forward
+down, right, [FP] = Hadouken
+down, right, [FP], [BP] = EX Hadouken
+
+down, left = Duck Back
+down, left, [FK] = Tatsumaki Senpukyaku
+
+right, down, right, [FP] = Shoryuken
+
+down, right, down, right, [FP] = Super Hadouken

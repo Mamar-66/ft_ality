@@ -1,0 +1,5 @@
+# Small grammar: 4 moves
+[P] = Punch
+[K] = Kick
+[P], [K] = Punch Kick
+Down, Right, [P] = Fireball

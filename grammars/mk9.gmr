@@ -1,15 +1,39 @@
-[FP] = Light Jab
-[FP] = Straight Punch
-[BP] = Heavy Hook
+# Mortal Kombat 9 style grammar. Move inputs are simplified / approximate
+# (character facing right: Left = Back, Right = Forward).
+# Format: key1, key2, ..., keyN = Move name
 
-down = Crouch
-down, right = Crawl Forward
-down, right, [FP] = Hadouken
-down, right, [FP], [BP] = EX Hadouken
+# Basic attacks
+[FP] = Jab
+[BP] = Claw Slam (Freddy Krueger)
+[BP] = Knockdown (Sonya)
+[BP] = Fist of Death (Liu-Kang)
+[FK] = Front Kick
+[BK] = Back Kick
+Block = Block
+Throw = Throw
+Tag = Tag Out
+Flip Stance = Flip Stance
 
-down, left = Duck Back
-down, left, [FK] = Tatsumaki Senpukyaku
+# Strings
+[BP], [FP] = Saibot Blast (Noob Saibot)
+[BP], [FP] = Active Duty (Jax)
+[FP], [FP], [BP] = Kombo Strike (Johnny Cage)
+[FP], [FP], [BP], [BK] = Twin Fangs (Kitana)
 
-right, down, right, [FP] = Shoryuken
+# Specials
+Left, Right, [FP] = Spear (Scorpion)
+Down, Left, [FP] = Teleport Punch (Scorpion)
+Down, Left, [BP] = Ice Ball (Sub-Zero)
+Down, Right, [BP] = Ice Slide (Sub-Zero)
+Left, Right, [BP] = Shadow Kick (Johnny Cage)
+Right, Right, [FK] = Flying Kick (Liu-Kang)
+Down, Right, [FP] = Fireball (Liu-Kang)
+Down, Left, [FK] = Bicycle Kick (Liu-Kang)
+Up, Up, [BK] = Dive Kick (Mileena)
+Down, Right, [BK] = Sai Throw (Mileena)
+Left, Left, Right, [FP] = Ground Pound (Jax)
+Right, Down, Right, [FP] = Uppercut Combo (Liu-Kang)
 
-down, right, down, right, [FP] = Super Hadouken
+# X-Rays
+Block, [FP], [BP] = X-Ray (any character)
+Down, Down, Left, Block = Stage Fatality

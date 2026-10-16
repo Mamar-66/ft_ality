@@ -1,17 +1,15 @@
 type symbol = string
-type moveName = string
-type stateId = int
 
-type transition = symbol * stateId
+type move_name = string
 
-type node = {
-  id : stateId;
-  moves : moveName list;
-  transitions : transition list;
+type rule = {
+  keys : symbol list;
+  name : move_name;
 }
 
-type automaton = {
-  nextId : stateId;
-  nodes : (stateId * node) list;
-  currentState : stateId;
-}
+type key =
+  | Byte of char
+  | Up
+  | Down
+  | Left
+  | Right

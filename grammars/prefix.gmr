@@ -1,0 +1,5 @@
+# Common prefixes (example from the correction sheet)
+a = Move A
+a, b = Move B
+a, b, a = Move C
+a, b, a, b = Move D
